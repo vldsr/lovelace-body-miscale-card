@@ -227,7 +227,7 @@ export class BodymiscaleCard extends LitElement {
       ? computeFunc(stateObj.attributes[data.key])
       : isValidEntityData
         ? computeFunc((stateObj as Record<string, any>)[data.key])
-        : this.hass.localize('state.default.unavailable');
+        : "----"//this.hass.localize('state.default.unavailable');
 
     if (data.key === 'last_measurement_time' && typeof value === 'string') {
       try {
@@ -651,8 +651,6 @@ export class BodymiscaleCard extends LitElement {
     if (!this.hass || !this.config?.entity) {
       return nothing;
     }
-    console.info('render', this.config);
-
     const stateObj = this.hass.states[this.config.entity];
 
     if (!stateObj) {
