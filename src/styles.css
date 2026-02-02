@@ -118,7 +118,7 @@ ha-card {
 #items[open] {
   transform: scaleY(1);
   opacity: 1;
-  max-height: 500px;
+  max-height: none;
 }
 
 .toolbar {

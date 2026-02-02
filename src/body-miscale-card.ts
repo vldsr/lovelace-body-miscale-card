@@ -9,8 +9,10 @@ import {
   formatDate,
   formatNumber,
   formatTime,
+  NumberFormat,
+  TimeFormat,
 } from 'custom-card-helpers';
-import { filterByImpedance } from './helpers';
+import { filterByImpedance, getYearsDifference } from './helpers';
 import localize from './localize';
 import styles from './styles.css';
 import { computeCssColor } from './compute-color';
@@ -163,12 +165,14 @@ export class BodymiscaleCard extends LitElement {
         ? (stateObj as Record<string, any>)[data.key]
         : this.hass.localize('state.default.unavailable');
 
-    if (data.key === 'last_measurement_time' && typeof value === 'string') {
+    if ((data.key === 'last_measurement_time' || data.key === 'timestamp') && typeof value === 'string') {
       try {
-        const parsedDate = new Date(value.replace(' ', 'T'));
+        const parsedDate = new Date(value.replace(' ', 'T').replace('+00:00', ''));
 
-        const formattedDate = formatDate(parsedDate, this.hass.locale);
-        const formattedTime = formatTime(parsedDate, this.hass.locale);
+        //this.hass.locale
+        const locale = { language: 'ru', number_format: NumberFormat.language, time_format: TimeFormat.twenty_four };
+        const formattedDate = formatDate(parsedDate, locale);
+        const formattedTime = formatTime(parsedDate, locale);
 
         value = `${formattedDate} ${formattedTime}`;
       } catch {
@@ -176,8 +180,7 @@ export class BodymiscaleCard extends LitElement {
       }
     }
 
-    const formatValue =
-      typeof value === 'number' ? formatNumber(value, this.hass.locale) : value;
+    const formatValue = typeof value === 'number' ? formatNumber(value, this.hass.locale) : value;
     const localizedValue = localize(`states.${value}`) || formatValue;
 
     const attribute =
@@ -237,12 +240,21 @@ export class BodymiscaleCard extends LitElement {
       } catch {
         /* empty */
       }
+    } else if (data.key == 'gender') {
+      value = this.renderIcon({ icon: value === 'male' ? 'mdi:human-male' : 'mdi:human-female', key: '' }, 'default', true);
+    } else if (data.key == 'birthdate' && (isValidAttribute || isValidEntityData)) {
+      value = getYearsDifference(value);
+      data.unit = value > 20 && value % 10 == 1
+        ? ' год'
+        : value > 20 && (value % 10 == 2 || value % 10 == 3 || value % 10 == 4)
+          ? ' года'
+          : ' лет';
     }
 
-    const formatValue =
-      typeof value === 'number' ? formatNumber(value, this.hass.locale) : value;
+    const formatValue = typeof value === 'number' ? formatNumber(value, this.hass.locale) : value;
 
     const localizedValue = localize(`attributes_value.${value}`) || formatValue;
+
     const attribute = html`<div>
       ${data.icon && this.renderIcon(data, 'default')}
       ${data.label ?? ''}${localizedValue}${data.unit ?? ''}
@@ -257,34 +269,34 @@ export class BodymiscaleCard extends LitElement {
 
   private renderBody(data: any): Template {
     if (!this.hass || !this.config?.entity) return nothing;
-  
+
     const stateObj = this.hass.states?.[this.config.entity];
     if (!stateObj) return html`<div>${this.hass.localize('state.default.unavailable')}</div>`;
-  
+
     const keyExists = data?.key && stateObj;
-  
+
     const isValidAttr =
       keyExists && stateObj.attributes?.[data.key] !== undefined;
-  
+
     const isValidEntity =
       keyExists && (stateObj as Record<string, any>)[data.key] !== undefined;
-  
+
     const computeFunc =
       typeof data.compute === 'function' ? data.compute : (v: any) => v;
-  
+
     const rawValue = isValidAttr
       ? computeFunc(stateObj.attributes[data.key])
       : isValidEntity
-      ? computeFunc((stateObj as Record<string, any>)[data.key])
-      : this.hass.localize('state.default.unavailable');
-  
+        ? computeFunc((stateObj as Record<string, any>)[data.key])
+        : this.hass.localize('state.default.unavailable');
+
     const formattedValue =
       typeof rawValue === 'number'
         ? formatNumber(rawValue, this.hass.locale)
         : rawValue;
-  
+
     const iconUrl = this.getIconUrl(data.icon);
-  
+
     const icon = data.icon
       ? html`
           <ha-icon
@@ -300,20 +312,20 @@ export class BodymiscaleCard extends LitElement {
           ></ha-icon>
         `
       : nothing;
-  
+
     const name = data.label
       ? html`<div class="name">${data.label}</div>`
       : nothing;
-  
+
     const segmentBar = typeof rawValue === 'number' ? this.renderColorBarSegments(data, rawValue, false) : nothing;
     const showBar = segmentBar !== nothing;
     const barClass = showBar ? 'bar-container' : 'bar-container compact';
-  
+
     const iconPosition = data.positions.icon;
     const namePosition = data.positions.name;
     const minMaxPosition = data.positions.minmax;
     const valuePosition = data.positions.value;
-    
+
     const iconBlock = iconPosition !== 'off' ? icon : nothing;
     const nameBlock = namePosition !== 'off' ? name : nothing;
 
@@ -331,11 +343,11 @@ export class BodymiscaleCard extends LitElement {
           <span class="min">${calculatedMin}</span>/<span class="max">${calculatedMax}</span>
         </div>`;
     }
-  
+
     const valueBlock = valuePosition !== 'off'
       ? html`<div class="value">${localize(`body_value.${rawValue}`) || formattedValue}${data.unit || ''}</div>`
       : nothing;
-    
+
     // Contenu gauche / droite
     const leftItems = [
       iconPosition === 'left' ? iconBlock : nothing,
@@ -343,14 +355,14 @@ export class BodymiscaleCard extends LitElement {
       minMaxPosition === 'left' ? minMaxBlock : nothing,
       valuePosition === 'left' ? valueBlock : nothing,
     ];
-    
+
     const rightItems = [
       iconPosition === 'right' ? iconBlock : nothing,
       namePosition === 'right' ? nameBlock : nothing,
       minMaxPosition === 'right' ? minMaxBlock : nothing,
       valuePosition === 'right' ? valueBlock : nothing,
     ];
-    
+
     return html`
     <div style="display: flex; flex-direction: column; padding: 0.4rem 0 0.4rem; ${!showBar ? 'justify-content: center; align-items: center;' : ''}">
       <div class="flex-container" style="${!showBar ? 'width: 100%;' : 'justify-content: space-between; width: 100%;'}">
@@ -369,20 +381,20 @@ export class BodymiscaleCard extends LitElement {
       ` : nothing}
     </div>
   `;
-  }  
-  
+  }
+
   private getMinMaxFromSeverity(severityConfig: NumericSeverity | undefined): { min: number; max: number } {
     let min = Infinity;
     let max = -Infinity;
-  
+
     if (severityConfig && Array.isArray(severityConfig)) {
       severityConfig.forEach(severityLevel => {
         const fromValue = severityLevel.from;
         const toValue = severityLevel.to;
-  
+
         let fromNumber: number | undefined;
         let toNumber: number | undefined;
-  
+
         if (typeof fromValue === 'number') {
           fromNumber = fromValue;
         } else if (typeof fromValue === 'string' && fromValue !== 'min') {
@@ -395,7 +407,7 @@ export class BodymiscaleCard extends LitElement {
         } else if (fromValue === 'min') {
           fromNumber = -Infinity;
         }
-  
+
         if (typeof toValue === 'number') {
           toNumber = toValue;
         } else if (typeof toValue === 'string' && toValue !== 'max') {
@@ -408,7 +420,7 @@ export class BodymiscaleCard extends LitElement {
         } else if (toValue === 'max') {
           toNumber = Infinity;
         }
-  
+
         if (fromNumber !== undefined && !isNaN(fromNumber)) {
           min = Math.min(min, fromNumber);
         }
@@ -417,7 +429,7 @@ export class BodymiscaleCard extends LitElement {
         }
       });
     }
-  
+
     return {
       min: min === Infinity ? 0 : min,
       max: max === -Infinity ? 100 : max,
@@ -431,22 +443,22 @@ export class BodymiscaleCard extends LitElement {
     if (range <= 0) return 0;
     return ((numberValue - rangeData.min) / range) * 100;
   }
-  
+
   private renderColorBarSegments(data: any, value: number, wrap = true): Template {
     const { min: calculatedMin, max: calculatedMax } = this.getMinMaxFromSeverity(data.severity || []);
     const range = calculatedMax - calculatedMin;
     if (!data.severity || !Array.isArray(data.severity) || range <= 0) {
       return nothing;
     }
-  
+
     const filteredSeverity = data.severity.filter(
       (s: any) => s.color !== 'disabled' && s.from !== null && s.to !== null && s.color !== undefined
     );
-  
+
     if (filteredSeverity.length === 0) {
       return nothing;
     }
-  
+
     const segmentsHtml = filteredSeverity.map((segment: any, index: number) => {
       const from = parseFloat(segment.from) || calculatedMin;
       const to = parseFloat(segment.to) || calculatedMax;
@@ -460,7 +472,7 @@ export class BodymiscaleCard extends LitElement {
       const segmentLabelBelow = showBelow && segment.label
         ? html`<div class="segment-label-below" style="color: ${color};">${localize(`label_below.${segment.label}`) || segment.label || ''}</div>`
         : nothing;
-  
+
       return html`
         <div class="colorbar-segment" style="width: ${widthPercent}%; background-color: ${color}; border-radius: ${index === 0 ? '4px 0 0 4px' : index === filteredSeverity.length - 1 ? '0 4px 4px 0' : '0'};">
           ${segmentLabelAbove}
@@ -468,13 +480,13 @@ export class BodymiscaleCard extends LitElement {
         </div>
       `;
     });
-  
+
     const markerPercent = this._computePercent({ min: calculatedMin, max: calculatedMax }, value);
     const activeSegment = filteredSeverity.find(
       (s: any) => value >= (parseFloat(s.from) || calculatedMin) && value <= (parseFloat(s.to) || calculatedMax)
     );
     const markerColor = computeCssColor(activeSegment?.color) || 'var(--primary-color)';
-  
+
     const barHtml = html`
       <div class="bar-inner">
         ${segmentsHtml}
@@ -484,7 +496,7 @@ export class BodymiscaleCard extends LitElement {
         </div>
       </div>
     `;
-  
+
     return wrap ? html`<div class="bar-container">${barHtml}</div>` : barHtml;
   }
 
@@ -496,6 +508,7 @@ export class BodymiscaleCard extends LitElement {
   private renderIcon(
     data: any,
     type: 'default' | 'body' = 'default',
+    noMargin = false
   ): Template {
     if (!this.hass || !this.config?.entity) {
       return nothing;
@@ -517,7 +530,7 @@ export class BodymiscaleCard extends LitElement {
 
     const iconUrl = this.getIconUrl(data.icon);
 
-    if (type === 'body'&& iconUrl ) {
+    if (type === 'body' && iconUrl) {
       return html`
         <ha-icon
           class="image"
@@ -539,9 +552,9 @@ export class BodymiscaleCard extends LitElement {
       <ha-icon
         class="${iconClass}"
         icon="${icon}"
-        style="margin-right: 10px; ${this.config.styles?.icon || ''} ${isProblem
-          ? 'color: var(--error-color) !important;'
-          : ''}"
+        style="${noMargin ? '' : 'margin-right: 10px;'} ${this.config.styles?.icon || ''} ${isProblem
+        ? 'color: var(--error-color) !important;'
+        : ''}"
       ></ha-icon>
     `;
   }
@@ -562,8 +575,8 @@ export class BodymiscaleCard extends LitElement {
         title=${ifDefined(button.label)}
       >
         ${button.icon
-          ? html`<ha-icon icon="${button.icon}"></ha-icon>`
-          : button.label}
+        ? html`<ha-icon icon="${button.icon}"></ha-icon>`
+        : button.label}
       </ha-button>
     `;
   }
@@ -572,25 +585,29 @@ export class BodymiscaleCard extends LitElement {
     if (!this.config.show_toolbar) {
       return nothing;
     }
-    return html`
-      <div class="toolbar" @ll-custom=${this.customEvent} ?open=${this.open}>
-        <ha-icon-button
+    const toggleButton = this.config.show_always_details
+    ?''
+      :  html`<ha-icon-button
           @click=${this.toggle}
           title=${ifDefined(localize('common.toggle_power') || undefined)}
           style="color: var(--primary-color);"
         >
           <ha-icon
             icon=${this.config.show_always_details
-              ? ''
-              : this.open
-                ? 'mdi:chevron-up'
-                : 'mdi:chevron-down'}
+        ? ''
+        : this.open
+          ? 'mdi:chevron-up'
+          : 'mdi:chevron-down'}
           ></ha-icon>
-        </ha-icon-button>
+        </ha-icon-button>`;
+        
+    return html`
+      <div class="toolbar" @ll-custom=${this.customEvent} ?open=${this.open}>
+        ${toggleButton}
         <div class="fill-gap"></div>
         ${Object.values(this.config.buttons ?? {})
-          .filter((btn) => btn.show)
-          .map((btn) => this.renderButton(btn))}
+        .filter((btn) => btn.show)
+        .map((btn) => this.renderButton(btn))}
       </div>
     `;
   }
@@ -622,10 +639,10 @@ export class BodymiscaleCard extends LitElement {
         corner="BOTTOM_START"
       >
         ${list.map(
-          (item: string) => html`
+      (item: string) => html`
             <mwc-list-item value=${item}>${item}</mwc-list-item>
           `,
-        )}
+    )}
       </mwc-menu>
     </div>`;
   }
@@ -634,6 +651,7 @@ export class BodymiscaleCard extends LitElement {
     if (!this.hass || !this.config?.entity) {
       return nothing;
     }
+    console.info('render', this.config);
 
     const stateObj = this.hass.states[this.config.entity];
 
@@ -663,16 +681,16 @@ export class BodymiscaleCard extends LitElement {
     return html`
       <ha-card>
         ${this.shouldShowBackground()
-          ? html`
+        ? html`
               <div
                 class="background"
                 style="${this.config.styles?.background || ''};"
               >
                 ${this.config.show_name
-                  ? html`<div class="title" style="padding: 12px 16px 8px">
+            ? html`<div class="title" style="padding: 12px 16px 8px">
                       ${this.renderName(stateObj)}
                     </div>`
-                  : ''}
+            : ''}
                 <div
                   class="grid"
                   style="padding: 12px 16px 8px"
@@ -681,30 +699,30 @@ export class BodymiscaleCard extends LitElement {
                 >
                   <div class="grid-left">
                     ${(this.config.states
-                      ? Object.values(this.config.states)
-                      : []
-                    )
-                      .filter((v) => v)
-                      .map(this.renderState.bind(this))}
+            ? Object.values(this.config.states)
+            : []
+          )
+            .filter((v) => v)
+            .map(this.renderState.bind(this))}
                   </div>
                   <div class="grid-right">
                     ${filteredAttributesData
-                      .filter(Boolean)
-                      .map(this.renderAttribute.bind(this))}
+            .filter(Boolean)
+            .map(this.renderAttribute.bind(this))}
                   </div>
                 </div>
               </div>
             `
-          : this.config.show_name
-            ? html`<div class="title">${this.renderName(stateObj)}</div>`
-            : ''}
+        : this.config.show_name
+          ? html`<div class="title">${this.renderName(stateObj)}</div>`
+          : ''}
         ${this.renderToolbar()}
 
         <div id="items" ?open=${this.open || this.config.show_always_details}>
           <div id="score" class="card-content">
-            <div class="scroll-wrapper">
+            <!--div class="scroll-wrapper"-->
               ${filteredBodyData.filter(Boolean).map(this.renderBody.bind(this))}
-            </div>
+            <!--/div-->
           </div>
         </div>
       </ha-card>

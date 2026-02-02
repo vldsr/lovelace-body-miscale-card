@@ -79,7 +79,7 @@ export class BodymiscaleCardEditor
 
   private renderPage1(config: Partial<BodymiscaleCardConfig>): Template {
     const entities = Object.keys(this.hass!.states).filter((entity) =>
-      entity.startsWith('bodymiscale.'),
+      entity.startsWith('bodymiscale.') || entity.startsWith('sensor.'),
     );
 
     return html`

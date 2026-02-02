@@ -46,9 +46,9 @@ export default function buildConfig(
     throw new Error(localize('error.missing_entity'));
   }
 
-  if (config.entity.split('.')[0] !== 'bodymiscale') {
-    throw new Error(localize('error.missing_entity_bodymiscale'));
-  }
+  // if (config.entity.split('.')[0] !== 'bodymiscale') {
+  //   throw new Error(localize('error.missing_entity_bodymiscale'));
+  // }
 
   // Fusionner les données et préparer les valeurs par défaut
   return {

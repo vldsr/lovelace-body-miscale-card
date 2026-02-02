@@ -42,3 +42,18 @@ export function filterByImpedance<T extends { impedance_required?: boolean }>(
     (item) => model || !item.impedance_required,
   );
 }
+
+export function getYearsDifference(startDate: string) {
+  const today = new Date();
+  const start = new Date(startDate);
+
+  let years = today.getFullYear() - start.getFullYear();
+  const months = today.getMonth() - start.getMonth();
+  const days = today.getDate() - start.getDate();
+
+  if (months < 0 || (months === 0 && days < 0)) {
+    years--;
+  }
+
+  return years;
+}

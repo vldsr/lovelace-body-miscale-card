@@ -48,7 +48,7 @@ const languages: Record<string, Translations> = {
   zh_Hant: zh_Hant,
 };
 
-const DEFAULT_LANG = 'en';
+const DEFAULT_LANG = 'ru';
 
 export default function localize(
   str: string,
@@ -57,16 +57,7 @@ export default function localize(
 ): string | undefined {
   const [section, key] = str.toLowerCase().split('.');
 
-  let langStored: string | null = null;
-
-  try {
-    langStored = JSON.parse(localStorage.getItem('selectedLanguage') ?? '""');
-  } catch (e) {
-    console.warn(e);
-    langStored = localStorage.getItem('selectedLanguage');
-  }
-
-  const lang = (langStored || navigator.language.split('-')[0] || DEFAULT_LANG)
+  const lang = DEFAULT_LANG
     .replace(/['"]+/g, '')
     .replace('-', '_');
 
