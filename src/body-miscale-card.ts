@@ -240,7 +240,7 @@ export class BodymiscaleCard extends LitElement {
       } catch {
         /* empty */
       }
-    } else if (data.key == 'gender') {
+    } else if (data.key == 'gender' && (value === 'male' || value === 'female')) {
       value = this.renderIcon({ icon: value === 'male' ? 'mdi:human-male' : 'mdi:human-female', key: '' }, 'default', true);
     } else if (data.key == 'birthdate' && (isValidAttribute || isValidEntityData)) {
       value = getYearsDifference(value);
@@ -586,21 +586,21 @@ export class BodymiscaleCard extends LitElement {
       return nothing;
     }
     const toggleButton = this.config.show_always_details
-    ?''
-      :  html`<ha-icon-button
+      ? ''
+      : html`<ha-icon-button
           @click=${this.toggle}
           title=${ifDefined(localize('common.toggle_power') || undefined)}
           style="color: var(--primary-color);"
         >
           <ha-icon
             icon=${this.config.show_always_details
-        ? ''
-        : this.open
-          ? 'mdi:chevron-up'
-          : 'mdi:chevron-down'}
+          ? ''
+          : this.open
+            ? 'mdi:chevron-up'
+            : 'mdi:chevron-down'}
           ></ha-icon>
         </ha-icon-button>`;
-        
+
     return html`
       <div class="toolbar" @ll-custom=${this.customEvent} ?open=${this.open}>
         ${toggleButton}
